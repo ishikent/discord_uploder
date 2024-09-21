@@ -3,6 +3,11 @@ import os
 import asyncio
 from keep_alive import keep_alive
 from datetime import datetime
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 client = discord.Client(intents=discord.Intents.default())
 
@@ -14,7 +19,12 @@ scheduled_threads = []
 SCHEDULE_CHANNEL_ID = os.getenv("YOUR_SCHEDULE_CHANNEL_ID")  # スレッド予約を受け取るチャンネル
 THREAD_CHANNEL_ID   = os.getenv("YOUR_THREAD_CHANNEL_ID")    # 非公開スレッドがあるチャンネル
 
+logger.info(f'SCHEDULE_CHANNEL_ID : {SCHEDULE_CHANNEL_ID}')  # メッセージの内容をログ出力
+logger.info(f'THREAD_CHANNEL_ID : {THREAD_CHANNEL_ID}')  # メッセージの内容をログ出力
+
 async def process_message(message):
+    logger.info(f'Processing message: {message.content}') 
+
     # メッセージ内容をパース
     content = message.content
     try:
@@ -26,9 +36,10 @@ async def process_message(message):
         scheduled_threads.append((thread_id, publish_time))
         scheduled_threads.sort(key=lambda x: x[1])  # 時刻順にソート
         await message.delete()  # メッセージを削除
-        print(f'スレッドをスケジュールしました: ID={thread_id}, 公開予定時刻={publish_time}')
+
+        logger.info(f'Scheduled thread: ID={thread_id}, Publish Time={publish_time}')
     except Exception as e:
-        print(f'メッセージのパース中にエラー: {e}')
+        logger.error(f'Error processing message: {e}')  # エラーログ
 
 async def check_and_publish_thread():
     await client.wait_until_ready()  # Botが準備完了するまで待つ
@@ -44,7 +55,7 @@ async def check_and_publish_thread():
 
             if thread and thread.archived:
                 await thread.edit(archived=False)  # スレッドを公開
-                print(f'{thread.name} スレッドを公開しました')
+                logger.info(f'Published thread: {thread.name}')  # スレッド公開をログ出力
 
             scheduled_threads.pop(0)  # リストから削除
             await asyncio.sleep(1)  # スレッド公開後は1秒待機
@@ -53,14 +64,15 @@ async def check_and_publish_thread():
 
 @client.event
 async def on_ready():
-    print('ログインしました')
+    logger.info('Bot is ready.')  # ボットが準備完了した時のログ
     client.loop.create_task(check_and_publish_thread())  # スレッドの公開チェックを開始
 
 @client.event
 async def on_message(message):
     # メッセージが予約投稿チャンネルからのものであれば処理
     if message.channel.id == SCHEDULE_CHANNEL_ID:  # 予約投稿チャンネルIDを指定
-        emoji = "👁️" 
+        logger.info(f'Received message in schedule channel: {message.content}')
+        emoji = "🙏" 
         await message.add_reaction(emoji)
         await process_message(message)
 
