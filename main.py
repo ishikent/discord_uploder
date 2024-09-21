@@ -70,7 +70,7 @@ async def check_and_publish_thread():
 @client.event
 async def on_ready():
     logger.info('Bot is ready.')  
-    client.loop.create_task(check_and_publish_thread())  
+    # client.loop.create_task(check_and_publish_thread())  
 
 @client.event
 async def on_message(message):
