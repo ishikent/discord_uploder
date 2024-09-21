@@ -77,6 +77,8 @@ async def on_message(message):
     if message.channel.id != SCHEDULE_CHANNEL_ID:  
         return
 
+    pattern = r"^thread_id@(\d+),publish_date@(\d{4}-\d{2}-\d{2} \d{2}:\d{2})$"
+
     if not re.match(pattern, message.content):
         await message.add_reaction('❌')  
         return
