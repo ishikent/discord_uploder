@@ -47,9 +47,12 @@ async def check_and_publish_thread():
     while not client.is_closed():
         now = datetime.now()
 
+        if not scheduled_threads:
+            continue
+
         # 予定時刻を過ぎた最初のスレッドを公開
         thread_id, publish_time = scheduled_threads[0]
-        if scheduled_threads and now >= publish_time:
+        if now >= publish_time:
             channel = client.get_channel(THREAD_CHANNEL_ID)  # 非公開スレッドのチャンネルIDを指定
             thread = await channel.fetch_thread(thread_id)
 
