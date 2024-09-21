@@ -4,7 +4,7 @@ import asyncio
 from keep_alive import keep_alive
 from datetime import datetime
 import logging
-
+import re
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -22,24 +22,29 @@ THREAD_CHANNEL_ID   = os.getenv("YOUR_THREAD_CHANNEL_ID")    # 非公開スレ�
 logger.info(f'SCHEDULE_CHANNEL_ID : {SCHEDULE_CHANNEL_ID}')  # メッセージの内容をログ出力
 logger.info(f'THREAD_CHANNEL_ID : {THREAD_CHANNEL_ID}')  # メッセージの内容をログ出力
 
+pattern = r"^thread_id@(\d+),publish_date@(\d{4}-\d{2}-\d{2} \d{2}:\d{2})$"
+
 async def process_message(message):
     logger.info(f'Processing message: {message.content}') 
 
     # メッセージ内容をパース
     content = message.content
-    try:
-        thread_id, publish_time_str = content.split(',')
-        thread_id = int(thread_id.split(':')[1])
-        publish_time = datetime.strptime(publish_time_str.split(':')[1].strip(), '%Y-%m-%d %H:%M')
+    match_obj = re.match(pattern, content)
 
-        # リストに追加し、ソート
-        scheduled_threads.append((thread_id, publish_time))
-        scheduled_threads.sort(key=lambda x: x[1])  # 時刻順にソート
-        await message.delete()  # メッセージを削除
+    if match_obj:
+        try:
+            thread_id, publish_time_str = content.split(',')
+            thread_id = int(match_obj.group(1))
+            publish_time = datetime.strptime(match_obj.group(2), '%Y-%m-%d %H:%M')
 
-        logger.info(f'Scheduled thread: ID={thread_id}, Publish Time={publish_time}')
-    except Exception as e:
-        logger.error(f'Error processing message: {e}')  # エラーログ
+            # リストに追加し、ソート
+            scheduled_threads.append((thread_id, publish_time))
+            scheduled_threads.sort(key=lambda x: x[1])  # 時刻順にソート
+            await message.delete()  # メッセージを削除
+
+            logger.info(f'Scheduled thread: ID={thread_id}, Publish Time={publish_time}')
+        except Exception as e:
+            logger.error(f'Error processing message: {e}')  # エラーログ
 
 async def check_and_publish_thread():
     await client.wait_until_ready()  # Botが準備完了するまで待つ
@@ -73,11 +78,18 @@ async def on_ready():
 @client.event
 async def on_message(message):
     # メッセージが予約投稿チャンネルからのものであれば処理
-    if message.channel.id == SCHEDULE_CHANNEL_ID:  # 予約投稿チャンネルIDを指定
-        logger.info(f'Received message in schedule channel: {message.content}')
-        emoji = "🙏" 
-        await message.add_reaction(emoji)
-        await process_message(message)
+    if message.channel.id != SCHEDULE_CHANNEL_ID:  # 予約投稿チャンネルIDを指定
+        return
+
+    # メッセージの形式は「thread_id@1286961652188577805,publish_date@2024-09-21 17:33」
+    if not re.match(pattern, message.content):
+        await message.add_reaction('❌')  # エラーを示す絵文字
+        return
+    
+    logger.info(f'Received message in schedule channel: {message.content}')
+    emoji = "🙏" 
+    await message.add_reaction(emoji)
+    await process_message(message)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 keep_alive()
