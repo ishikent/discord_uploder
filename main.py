@@ -60,6 +60,8 @@ async def on_ready():
 async def on_message(message):
     # メッセージが予約投稿チャンネルからのものであれば処理
     if message.channel.id == SCHEDULE_CHANNEL_ID:  # 予約投稿チャンネルIDを指定
+        emoji = "👁️" 
+        await message.add_reaction(emoji)
         await process_message(message)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
