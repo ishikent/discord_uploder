@@ -45,7 +45,7 @@ async def check_and_publish_thread():
     await client.wait_until_ready()  # Botが準備完了するまで待つ
 
     while not client.is_closed():
-        now = datetime.now()
+        now = discord.utils.utcnow()  # UTCタイムゾーンの現在時刻を取得
 
         if not scheduled_threads:
             continue
@@ -61,9 +61,9 @@ async def check_and_publish_thread():
                 logger.info(f'Published thread: {thread.name}')  # スレッド公開をログ出力
 
             scheduled_threads.pop(0)  # リストから削除
-            await asyncio.sleep(1)  # スレッド公開後は1秒待機
+            await asyncio.sleep(30)  # スレッド公開後は1秒待機
 
-        await asyncio.sleep(1)  # 1秒ごとにチェック
+        await asyncio.sleep(30)  # 1秒ごとにチェック
 
 @client.event
 async def on_ready():
